@@ -31,7 +31,7 @@ jobs:
         run: dotnet build WeatherService.sln --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test WeatherService.sln --no-build --verbosity normal
+        run: dotnet test WeatherService.sln --configuration Release --no-build --verbosity normal
 
       - name: Publish
         run: dotnet publish WeatherService.Api/WeatherService.Api.csproj -c Release -o ${{env.AZURE_WEBAPP_PACKAGE_PATH}}/myapp
