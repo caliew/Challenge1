@@ -38,5 +38,16 @@ To start the application locally, use the following command in your terminal:
 dotnet run --project WeatherService.Api
 ```
 
+## 7. Live URLs (Azure Deployment)
+
+**Live Raw API Test Endpoint:**
+[https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/api/weather/current/Singapore](https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/api/weather/current/Singapore)
+
+**Live Interactive Swagger Dashboard:**
+[https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/swagger](https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/swagger)
+*(Note: Swagger defaults to disabled in production, but was explicitly unlocked in `Program.cs` for this presentation)*
+
+---
+
 **⭐ Key Presentation Talking Point:**
 > *"I designed this microservice with reviewer experience strictly in mind. Because I utilized SQLite and a keyless API framework, anyone can pull my repository and simply type `dotnet run`—it requires zero environment setup, zero database installations, and zero API keys to confidently evaluate."*
