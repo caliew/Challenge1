@@ -36,6 +36,6 @@ public class WeatherControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var record = Assert.IsType<WeatherRecord>(okResult.Value);
         Assert.Equal(location, record.Location);
-        Assert.Equal(30, record.TemperatureCelsius);
+        Assert.Equal(30.0, record.TemperatureCelsius);
     }
 }
