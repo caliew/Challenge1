@@ -46,3 +46,14 @@ This solution contains a [GitHub Actions workflow](.github/workflows/ci-cd.yml) 
    - Value: Paste the XML contents of the file you downloaded in Step 3 exactly as-is.
 5. **Update CI/CD YAML:** Edit `.github/workflows/ci-cd.yml`. Make sure `AZURE_WEBAPP_NAME` in the environment variables exactly matches the name of your created web app.
 6. The next time you commit to `main`, GitHub Actions will build, test, and instantly deploy the APIs directly to Azure!
+
+## 7. Live URLs (Azure Deployment)
+
+**Live Raw API Test Endpoint:**
+[https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/api/weather/current/Singapore](https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/api/weather/current/Singapore)
+
+**Live Interactive Swagger Dashboard:**
+[https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/swagger](https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/swagger)
+*(Note: Swagger defaults to disabled in production, but was explicitly unlocked in `Program.cs` for this presentation)*
+
+---
