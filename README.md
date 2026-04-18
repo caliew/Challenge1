@@ -3,7 +3,7 @@
 ## 🌐 Live URLs (Azure Deployment)
 
 **Live Raw API Test Endpoint:**
-[https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/api/weather/current/Singapore](https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/api/weather/current/Singapore)
+[https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/api/v1/weather/current/Singapore](https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/api/v1/weather/current/Singapore)
 
 **Live Interactive Swagger Dashboard:**
 [https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/swagger](https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/swagger)
@@ -37,7 +37,7 @@ This project fulfills the requirements for **Challenge #1: Design and implement 
 ### Core Requirements
 - [x] **RESTful API**: Creative design of weather endpoints (Current, History, Forecast).
 - [x] **External Integration**: Real-time data fetched from [OpenMeteo](https://open-meteo.com/).
-- [x] **Data Persistence**: Local database integration (SQLite + EF Core) for caching and data export.
+- [x] **Data Persistence**: Integrated **SQLite + Entity Framework Core** (EF Core). SQLite was chosen as a strategic design decision to ensure the microservice is fully "portable" and zero-configuration—providing a relational storage engine for caching and CSV exports without requiring an external database server.
 - [x] **Key Use Cases**:
     - Current, Forecast, and Historical data retrieval.
     - CSV Export for location-based weather data.
@@ -48,6 +48,10 @@ This project fulfills the requirements for **Challenge #1: Design and implement 
 - [x] **OpenAPI Integration**: Full Swagger/OpenAPI documentation.
 - [x] **Automated CI/CD**: End-to-end pipeline via GitHub Actions.
 - [x] **Cloud Native**: Automated deployment to Azure App Service.
+
+> [!TIP]
+> **Technical Design Choice: Why SQLite?**
+> Although the challenge only required general persistence, I opted for **SQLite + EF Core** to provide a self-contained, high-performance relational storage solution. This ensures the microservice is production-ready and fully functional (including background caching and CSV data export) the moment it is launched, with no external database dependencies or manual setup required for the reviewer.
 
 ---
 

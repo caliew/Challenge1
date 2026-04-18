@@ -4,7 +4,7 @@ using WeatherService.Core.Interfaces;
 namespace WeatherService.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class AlertsController : ControllerBase
 {
     private readonly IWeatherService _weatherService;

@@ -8,7 +8,7 @@ using System.Globalization;
 namespace WeatherService.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class WeatherController : ControllerBase
 {
     private readonly IWeatherService _weatherService;
