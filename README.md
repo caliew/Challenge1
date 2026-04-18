@@ -1,53 +1,6 @@
 # Weather Microservice
 
-A .NET 8 Web API demonstrating a weather microservice that integrates with an external provider (OpenMeteo), persists cached data locally with SQLite + EF Core, and incorporates typical microservice resiliency/rate-limiting best practices.
-
-## Prerequisites
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-
-## Running Locally
-
-1. Add the missing `Moq` package for the test project.
-   Run this in the root directory:
-   ```bash
-   dotnet add WeatherService.Tests package Moq
-   ```
-2. Build and run the project:
-   ```bash
-   dotnet run --project WeatherService.Api
-   ```
-3. A browser should open automatically (or you will see the localhost URL in the terminal, usually `https://localhost:5001`). Navigate to `https://localhost:<port>/swagger` to access the OpenAPI Swagger UI.
-4. Try out the `/api/Weather/current/Singapore` endpoint! The application automatically generates the SQLite database (`weather.db` inside the Data folder) when it starts.
-
-## API Features
-- **Fetch weather:** Returns current, historical, and mocked forecast data. Includes global partitioned rate limit (100 req/min).
-- **Service resilience:** Utilizes standard `.AddStandardResilienceHandler()` from Microsoft.Extensions.Http.Resilience to issue retries on transient external failures.
-- **Export Data:** Endpoint retrieves cached entities from the database and returns it formatted as `.csv`.
-- **Alerts base:** An initial Alerts endpoint representing background worker integration. 
-
-## CI/CD Pipeline & Deployment (Azure App Service)
-
-This solution contains a [GitHub Actions workflow](.github/workflows/ci-cd.yml) which performs formatting checks, tests, builds the DLLs, and publishes it to an Azure App Service using typical Azure deployments.
-
-**To setup your own Azure free tier and connect it to this repo:**
-
-1. **Create an Azure Account:** Head to [azure.microsoft.com](https://azure.microsoft.com) and sign up for a free tier account.
-2. **Create a Web App:** In the Azure Portal, click **Create a resource** -> **Web App**.
-   - **Publish:** Code.
-   - **Runtime stack:** .NET 8 (LTS).
-   - **Operating System:** Linux or Windows.
-   - Pick the **Free (F1)** pricing plan.
-3. **Download Publish Profile:** Once the App Service has been created, go to the Overview page and click **Download Publish Profile**.
-4. **Link to GitHub Actions:**
-   - Push this sourcecode repo to your GitHub account.
-   - Go to your repository **Settings** > **Secrets and variables** > **Actions**.
-   - Create a New repository secret.
-   - Name: `AZURE_WEBAPP_PUBLISH_PROFILE`.
-   - Value: Paste the XML contents of the file you downloaded in Step 3 exactly as-is.
-5. **Update CI/CD YAML:** Edit `.github/workflows/ci-cd.yml`. Make sure `AZURE_WEBAPP_NAME` in the environment variables exactly matches the name of your created web app.
-6. The next time you commit to `main`, GitHub Actions will build, test, and instantly deploy the APIs directly to Azure!
-
-## 7. Live URLs (Azure Deployment)
+## 🌐 Live URLs (Azure Deployment)
 
 **Live Raw API Test Endpoint:**
 [https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/api/weather/current/Singapore](https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/api/weather/current/Singapore)
@@ -56,4 +9,86 @@ This solution contains a [GitHub Actions workflow](.github/workflows/ci-cd.yml) 
 [https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/swagger](https://weatherapp-gwdjgnh5hzbcdtcx.malaysiawest-01.azurewebsites.net/swagger)
 *(Note: Swagger defaults to disabled in production, but was explicitly unlocked in `Program.cs` for this presentation)*
 
+
 ---
+
+## 📝 Original Challenge Assignment
+> **Challenge #1: Design and implement a Weather microservice**
+> 
+> Implement a Weather service API using C# / .NET Core. Weather data (e.g. temperature, humidity, air quality, etc) can be obtained from free 3rd party API such as https://data.gov.sg/ and OpenWeatherMap.
+> 
+> **Key Requirements**
+> - Implement appropriate REST endpoints for a Weather service. Be creative about the use cases.
+>   - Persist weather data in a database of your choice.
+>   - Example use cases:
+>     - Get current / forecast / historical weather by location.
+>     - Export weather data by location into CSV.
+>     - Subscribe to weather alerts.
+> - Apply security best practices with resiliency in mind.
+> - (🌟Bonus!) Configure OpenAPI with Swagger.
+> - (🌟Bonus!) Setup CI/CD that builds and tests your solution.
+> - (🌟Bonus!) Deploy your solution to a cloud service provider via CI/CD. Azure / AWS is preferred.
+
+---
+
+## 📋 Project Specification (Implementation Details)
+This project fulfills the requirements for **Challenge #1: Design and implement a Weather microservice**. The goal was to build a resilient, production-ready service using C# / .NET Core.
+
+### Core Requirements
+- [x] **RESTful API**: Creative design of weather endpoints (Current, History, Forecast).
+- [x] **External Integration**: Real-time data fetched from [OpenMeteo](https://open-meteo.com/).
+- [x] **Data Persistence**: Local database integration (SQLite + EF Core) for caching and data export.
+- [x] **Key Use Cases**:
+    - Current, Forecast, and Historical data retrieval.
+    - CSV Export for location-based weather data.
+    - Weather Alerting infrastructure.
+- [x] **Resilience & Security**: Implementation of rate-limiting and standard HTTP resilience policies.
+
+### ⭐ Bonus Achievements
+- [x] **OpenAPI Integration**: Full Swagger/OpenAPI documentation.
+- [x] **Automated CI/CD**: End-to-end pipeline via GitHub Actions.
+- [x] **Cloud Native**: Automated deployment to Azure App Service.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+
+### Local Setup & Execution
+1. **Restore Unit Test Dependencies**:
+   Run this in the root directory:
+   ```bash
+   dotnet add WeatherService.Tests package Moq
+   ```
+2. **Build and Run**:
+   ```bash
+   dotnet run --project WeatherService.Api
+   ```
+3. **Access API**: Navigate to `https://localhost:<port>/swagger` (or see terminal output) to access the interactive Swagger UI.
+4. **Try it out**: Visit `/api/Weather/current/Singapore`. The SQLite database (`weather.db`) is automatically initialized on startup inside the Data folder.
+
+---
+
+## 🛠️ Feature Deep Dive
+
+- **Dynamic Weather Fetching**: Retrieves current, historical, and forecasted data with a global partitioned rate limit (100 req/min).
+- **Service Resilience**: Utilizes `Microsoft.Extensions.Http.Resilience` to handle transient external failures with automated retries.
+- **Data Export (CSV)**: A dedicated endpoint transforms cached database records into downloadable CSV format.
+- **Alerting Framework**: A background-worker ready endpoint representing infrastructure for weather alert subscriptions.
+
+---
+
+## 🌐 CI/CD & Cloud Deployment
+
+This repository uses a [GitHub Actions workflow](.github/workflows/ci-cd.yml) to perform formatting checks, tests, builds, and automated publishing.
+
+### Azure Setup (For Reproduction)
+To setup your own Azure free tier and connect it to this repo:
+1. **Create Web App**: In Azure Portal, create a Web App (Publish: Code, Runtime: .NET 8, Plan: Free F1).
+2. **Download Publish Profile**: From the App Service Overview page.
+3. **Configure GitHub Secrets**:
+   - Go to **Settings** > **Secrets and variables** > **Actions**.
+   - Create `AZURE_WEBAPP_PUBLISH_PROFILE` and paste the XML contents.
+4. **Update Workflow**: Ensure `AZURE_WEBAPP_NAME` in `.github/workflows/ci-cd.yml` matches your Azure resource name.
