@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using WeatherService.Core.Interfaces;
 using WeatherService.Infrastructure.Clients;
 using WeatherService.Infrastructure.Data;
+using WeatherService.Infrastructure.Notifications; // [ADDED - Feature: Notification]
 using WeatherService.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,6 +46,13 @@ builder.Services.AddDbContext<WeatherDbContext>(options =>
 
 // Configure Dependency Injection for Domain Services
 builder.Services.AddScoped<IWeatherService, WeatherAppService>();
+
+// [ADDED - Feature: Notification]
+// Api Layer: Register INotificationService → EmailNotificationService in the DI container.
+// WeatherAppService depends on INotificationService (Core interface).
+// DI will inject EmailNotificationService (Infrastructure implementation) at runtime.
+// SMTP credentials are read from appsettings.json (Smtp section).
+builder.Services.AddScoped<INotificationService, EmailNotificationService>();
 
 // Configure HttpClient for External API with Polly Resiliency
 builder.Services.AddHttpClient<IExternalWeatherClient, OpenMeteoClient>()
