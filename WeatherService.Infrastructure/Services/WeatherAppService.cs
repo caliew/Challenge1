@@ -72,6 +72,17 @@ public class WeatherAppService : IWeatherService
         return record;
     }
 
+    public async Task<IEnumerable<ForecastDay>> GetForecastAsync(string location, int days = 7, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Received forecast request. Location: {Location}, Days: {Days}", location, days);
+
+        // Forecasts are always live — no DB caching needed; just delegate to the external client.
+        var forecast = await _weatherClient.FetchForecastAsync(location, days, cancellationToken);
+
+        _logger.LogInformation("Forecast retrieved for {Location}. {Count} days returned.", location, forecast.Count());
+        return forecast;
+    }
+
     public async Task<IEnumerable<WeatherRecord>> GetHistoricalWeatherAsync(string location, DateTime date, CancellationToken cancellationToken = default)
     {
         // Truncate time for date comparison

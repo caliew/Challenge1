@@ -26,17 +26,9 @@ public class WeatherController : ControllerBase
     }
 
     [HttpGet("forecast/{location}")]
-    public IActionResult GetForecast(string location)
+    public async Task<IActionResult> GetForecast(string location, [FromQuery] int days = 7, CancellationToken cancellationToken = default)
     {
-        // For demonstration, mock a 3-day forecast
-        var forecast = Enumerable.Range(1, 3).Select(index => new
-        {
-            Date = DateTime.UtcNow.AddDays(index),
-            Location = location,
-            TemperatureCelsius = Random.Shared.Next(-20, 55),
-            Summary = "Mocked Forecast"
-        });
-
+        var forecast = await _weatherService.GetForecastAsync(location, days, cancellationToken);
         return Ok(forecast);
     }
 

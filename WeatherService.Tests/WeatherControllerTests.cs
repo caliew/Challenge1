@@ -38,4 +38,28 @@ public class WeatherControllerTests
         Assert.Equal(location, record.Location);
         Assert.Equal(30.0, record.TemperatureCelsius);
     }
+
+    [Fact]
+    public async Task GetForecast_ReturnsOk_WithForecastDays()
+    {
+        // Arrange
+        var location = "Singapore";
+        var expectedForecast = new List<ForecastDay>
+        {
+            new() { Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), Location = location, MaxTemperatureCelsius = 33, MinTemperatureCelsius = 26, Condition = "Clear sky" },
+            new() { Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)), Location = location, MaxTemperatureCelsius = 31, MinTemperatureCelsius = 25, Condition = "Rain" }
+        };
+        _mockWeatherService
+            .Setup(s => s.GetForecastAsync(location, 7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedForecast);
+
+        // Act
+        var result = await _controller.GetForecast(location, 7, CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var days = Assert.IsAssignableFrom<IEnumerable<ForecastDay>>(okResult.Value);
+        Assert.Equal(2, days.Count());
+        Assert.Equal("Clear sky", days.First().Condition);
+    }
 }

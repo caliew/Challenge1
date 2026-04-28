@@ -11,6 +11,11 @@ public interface IWeatherService
     Task<WeatherRecord> GetCurrentWeatherAsync(string location, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets a multi-day daily forecast for a specified location from the external API.
+    /// </summary>
+    Task<IEnumerable<ForecastDay>> GetForecastAsync(string location, int days = 7, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the historically cached weather for a specified location and date.
     /// </summary>
     Task<IEnumerable<WeatherRecord>> GetHistoricalWeatherAsync(string location, DateTime date, CancellationToken cancellationToken = default);

@@ -11,6 +11,9 @@ public class OpenMeteoClient : IExternalWeatherClient
     private readonly HttpClient _httpClient;
     private readonly ILogger<OpenMeteoClient> _logger;
 
+    // Open-Meteo Geocoding API runs on a different base host, so we use absolute URLs for it.
+    private const string GeocodingApiUrl = "https://geocoding-api.open-meteo.com/v1/search";
+
     public OpenMeteoClient(HttpClient httpClient, ILogger<OpenMeteoClient> logger)
     {
         _httpClient = httpClient;
@@ -20,7 +23,7 @@ public class OpenMeteoClient : IExternalWeatherClient
 
     public async Task<WeatherRecord?> FetchCurrentWeatherAsync(string location, CancellationToken cancellationToken = default)
     {
-        var (lat, lon) = GetCoordinates(location);
+        var (lat, lon) = await ResolveCoordinatesAsync(location, cancellationToken);
         var url = $"forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,weather_code";
 
         _logger.LogInformation("Calling Open-Meteo API. Location: {Location}, URL: {Url}", location, url);
@@ -57,17 +60,75 @@ public class OpenMeteoClient : IExternalWeatherClient
         }
     }
 
-    private static (double lat, double lon) GetCoordinates(string location)
+    public async Task<IEnumerable<ForecastDay>> FetchForecastAsync(string location, int days = 7, CancellationToken cancellationToken = default)
     {
-        // Mock geocoding. Real implementation would call something like openstreetmap geocoding API
-        return location.ToLowerInvariant() switch
+        var (lat, lon) = await ResolveCoordinatesAsync(location, cancellationToken);
+        var url = $"forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days={days}&timezone=auto";
+
+        _logger.LogInformation("Calling Open-Meteo forecast API. Location: {Location}, Days: {Days}, URL: {Url}", location, days, url);
+
+        try
         {
-            "singapore" => (1.3521, 103.8198),
-            "london" => (51.5074, -0.1278),
-            "new york" => (40.7128, -74.0060),
-            "tokyo" => (35.6762, 139.6503),
-            _ => (1.3521, 103.8198) // Default to Singapore
-        };
+            var response = await _httpClient.GetAsync(url, cancellationToken);
+            _logger.LogInformation("Open-Meteo forecast response received. StatusCode: {StatusCode}", (int)response.StatusCode);
+            response.EnsureSuccessStatusCode();
+
+            var content = await response.Content.ReadFromJsonAsync<OpenMeteoForecastResponse>(cancellationToken: cancellationToken);
+            if (content?.Daily == null)
+            {
+                _logger.LogWarning("Open-Meteo forecast returned empty daily payload for Location: {Location}", location);
+                return Enumerable.Empty<ForecastDay>();
+            }
+
+            var daily = content.Daily;
+            var count = daily.Time?.Length ?? 0;
+
+            var result = new List<ForecastDay>(count);
+            for (int i = 0; i < count; i++)
+            {
+                result.Add(new ForecastDay
+                {
+                    Date                  = DateOnly.Parse(daily.Time![i]),
+                    Location              = location,
+                    MaxTemperatureCelsius = daily.Temperature_2m_max![i],
+                    MinTemperatureCelsius = daily.Temperature_2m_min![i],
+                    Condition             = MapWeatherCode(daily.Weather_code![i])
+                });
+            }
+
+            _logger.LogDebug("Open-Meteo forecast parsed. {Count} days returned for {Location}", result.Count, location);
+            return result;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP request to Open-Meteo forecast failed for Location: {Location}", location);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Resolves a city name to (latitude, longitude) using the Open-Meteo Geocoding API.
+    /// Replaces the old hardcoded GetCoordinates() switch — now supports any city worldwide.
+    /// </summary>
+    private async Task<(double lat, double lon)> ResolveCoordinatesAsync(string location, CancellationToken cancellationToken)
+    {
+        var geocodeUrl = $"{GeocodingApiUrl}?name={Uri.EscapeDataString(location)}&count=1&language=en&format=json";
+
+        _logger.LogInformation("Resolving coordinates for city: {Location}", location);
+
+        var geoResponse = await _httpClient.GetFromJsonAsync<GeocodingResponse>(geocodeUrl, cancellationToken);
+
+        var result = geoResponse?.Results?.FirstOrDefault();
+        if (result == null)
+        {
+            _logger.LogWarning("Geocoding API returned no results for city: {Location}", location);
+            throw new ArgumentException($"City '{location}' could not be found. Please check the city name and try again.");
+        }
+
+        _logger.LogDebug("Resolved '{Location}' to lat={Lat}, lon={Lon} ({FullName})",
+            location, result.Latitude, result.Longitude, result.Name);
+
+        return (result.Latitude, result.Longitude);
     }
 
     private static string MapWeatherCode(int code)
@@ -86,6 +147,8 @@ public class OpenMeteoClient : IExternalWeatherClient
         };
     }
 
+    // ── DTOs ──────────────────────────────────────────────────────────────────
+
     private class OpenMeteoResponse
     {
         [JsonPropertyName("current")]
@@ -100,5 +163,40 @@ public class OpenMeteoClient : IExternalWeatherClient
         public double Relative_humidity_2m { get; set; }
         [JsonPropertyName("weather_code")]
         public int Weather_code { get; set; }
+    }
+
+    private class OpenMeteoForecastResponse
+    {
+        [JsonPropertyName("daily")]
+        public DailyBlock? Daily { get; set; }
+    }
+
+    private class DailyBlock
+    {
+        [JsonPropertyName("time")]
+        public string[]? Time { get; set; }
+        [JsonPropertyName("temperature_2m_max")]
+        public double[]? Temperature_2m_max { get; set; }
+        [JsonPropertyName("temperature_2m_min")]
+        public double[]? Temperature_2m_min { get; set; }
+        [JsonPropertyName("weather_code")]
+        public int[]? Weather_code { get; set; }
+    }
+
+    // DTOs for Open-Meteo Geocoding API response
+    private class GeocodingResponse
+    {
+        [JsonPropertyName("results")]
+        public GeocodingResult[]? Results { get; set; }
+    }
+
+    private class GeocodingResult
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+        [JsonPropertyName("latitude")]
+        public double Latitude { get; set; }
+        [JsonPropertyName("longitude")]
+        public double Longitude { get; set; }
     }
 }
