@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 using WeatherService.Core.Entities;
 using WeatherService.Core.Interfaces;
 
@@ -8,40 +9,52 @@ namespace WeatherService.Infrastructure.Clients;
 public class OpenMeteoClient : IExternalWeatherClient
 {
     private readonly HttpClient _httpClient;
+    private readonly ILogger<OpenMeteoClient> _logger;
 
-    public OpenMeteoClient(HttpClient httpClient)
+    public OpenMeteoClient(HttpClient httpClient, ILogger<OpenMeteoClient> logger)
     {
         _httpClient = httpClient;
         _httpClient.BaseAddress = new Uri("https://api.open-meteo.com/v1/");
+        _logger = logger;
     }
 
     public async Task<WeatherRecord?> FetchCurrentWeatherAsync(string location, CancellationToken cancellationToken = default)
     {
-        // Simple mapping: Normally we would call a geocoding API to resolve the location to lat/lon.
-        // For demonstration purposes without an external geocoding key, we'll hardcode a few common ones
-        // or just default to Singapore's coordinates if unknown.
         var (lat, lon) = GetCoordinates(location);
-
-        // Call open-meteo (requires lat/lon)
         var url = $"forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,weather_code";
 
-        var response = await _httpClient.GetAsync(url, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        _logger.LogInformation("Calling Open-Meteo API. Location: {Location}, URL: {Url}", location, url);
 
-        var content = await response.Content.ReadFromJsonAsync<OpenMeteoResponse>(cancellationToken: cancellationToken);
-        if (content?.Current == null)
+        try
         {
-            return null;
+            var response = await _httpClient.GetAsync(url, cancellationToken);
+            _logger.LogInformation("Open-Meteo response received. StatusCode: {StatusCode}", (int)response.StatusCode);
+            response.EnsureSuccessStatusCode();
+
+            var content = await response.Content.ReadFromJsonAsync<OpenMeteoResponse>(cancellationToken: cancellationToken);
+            if (content?.Current == null)
+            {
+                _logger.LogWarning("Open-Meteo returned empty payload for Location: {Location}", location);
+                return null;
+            }
+
+            _logger.LogDebug("Open-Meteo data parsed. Temperature: {Temp}C, Humidity: {Humidity}%, Code: {Code}",
+                content.Current.Temperature_2m, content.Current.Relative_humidity_2m, content.Current.Weather_code);
+
+            return new WeatherRecord
+            {
+                Location = location,
+                TemperatureCelsius = content.Current.Temperature_2m,
+                HumidityPercentage = content.Current.Relative_humidity_2m,
+                Condition = MapWeatherCode(content.Current.Weather_code),
+                Timestamp = DateTime.UtcNow
+            };
         }
-
-        return new WeatherRecord
+        catch (HttpRequestException ex)
         {
-            Location = location,
-            TemperatureCelsius = content.Current.Temperature_2m,
-            HumidityPercentage = content.Current.Relative_humidity_2m,
-            Condition = MapWeatherCode(content.Current.Weather_code),
-            Timestamp = DateTime.UtcNow
-        };
+            _logger.LogError(ex, "HTTP request to Open-Meteo failed for Location: {Location}", location);
+            throw;
+        }
     }
 
     private static (double lat, double lon) GetCoordinates(string location)
