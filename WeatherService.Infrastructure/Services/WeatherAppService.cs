@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using WeatherService.Core.Entities;
 using WeatherService.Core.Interfaces;
 using WeatherService.Infrastructure.Data;
@@ -9,29 +10,29 @@ public class WeatherAppService : IWeatherService
 {
     private readonly WeatherDbContext _dbContext;
     private readonly IExternalWeatherClient _weatherClient;
-
-    // [ADDED - Feature: Notification]
-    // Infrastructure Layer: INotificationService is injected here via DI (registered in Program.cs).
-    // WeatherAppService only knows the INTERFACE (Core contract), not EmailNotificationService directly.
-    // This is the Dependency Inversion principle in action.
     private readonly INotificationService _notificationService;
+    private readonly ILogger<WeatherAppService> _logger;
 
-    // [ADDED - Feature: Notification] — added INotificationService parameter
+    // Infrastructure Layer: All dependencies are injected via DI (registered in Program.cs).
+    // WeatherAppService only knows INTERFACES (Core contracts), never concrete implementations directly.
+    // This is the Dependency Inversion Principle in action.
     public WeatherAppService(
         WeatherDbContext dbContext,
         IExternalWeatherClient weatherClient,
-        INotificationService notificationService)  // [ADDED]
+        INotificationService notificationService,
+        ILogger<WeatherAppService> logger)
     {
         _dbContext = dbContext;
         _weatherClient = weatherClient;
-        _notificationService = notificationService; // [ADDED]
+        _notificationService = notificationService;
+        _logger = logger;
     }
 
     public async Task<WeatherRecord> GetCurrentWeatherAsync(string location, CancellationToken cancellationToken = default)
     {
-        // [ADDED - Feature: Request Logging]
-        // Infrastructure Layer: Log every inbound API request to the ApiRequestLogs table.
-        // The ApiRequestLog entity is from Core; the persistence is done here in Infrastructure via EF Core.
+        _logger.LogInformation("Received request for current weather. Location: {Location}", location);
+
+        // Log every inbound API request to the ApiRequestLogs table.
         var requestLog = new ApiRequestLog
         {
             Location    = location,
@@ -40,24 +41,27 @@ public class WeatherAppService : IWeatherService
         };
         _dbContext.ApiRequestLogs.Add(requestLog);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        _logger.LogDebug("Request log persisted for {Location}", location);
 
         // 1. Fetch from external API (via OpenMeteoClient through Polly resilience pipeline)
+        _logger.LogInformation("Calling external weather API for {Location}", location);
         var record = await _weatherClient.FetchCurrentWeatherAsync(location, cancellationToken);
         if (record == null)
+        {
+            _logger.LogWarning("External API returned no data for {Location}", location);
             throw new Exception("Could not fetch weather data.");
+        }
 
         // 2. Persist weather result to DB (acts as a write-through cache for historical queries)
         _dbContext.WeatherRecords.Add(record);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Weather record persisted for {Location} at {Timestamp}", location, record.Timestamp);
 
-        // [ADDED - Feature: Notification / Domain Logic]
-        // Core Layer rule: record.IsMonitoredLocation() is a DOMAIN RULE defined on the WeatherRecord entity in Core.
+        // Core Layer domain rule: IsMonitoredLocation() is defined on the WeatherRecord entity in Core.
         // Infrastructure calls it here but the decision logic lives in Core — not hardcoded in this service.
-        // If the location is a monitored location (e.g. Singapore), send a notification email.
         if (record.IsMonitoredLocation())
         {
-            // The recipient email and the fact that Singapore is "monitored" is a business/config decision.
-            // In a production system this would come from the AlertSubscriptions table or configuration.
+            _logger.LogInformation("Monitored location detected: {Location}. Dispatching notification.", location);
             await _notificationService.SendRequestNotificationAsync(
                 toEmail:   "caliew888@gmail.com",
                 location:  location,
@@ -82,6 +86,8 @@ public class WeatherAppService : IWeatherService
 
     public async Task SubscribeToAlertsAsync(string email, string location, CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("Alert subscription request received. Email: {Email}, Location: {Location}", email, location);
+
         var exists = await _dbContext.AlertSubscriptions.AnyAsync(s => s.Email == email && s.Location == location, cancellationToken);
         if (!exists)
         {
@@ -92,6 +98,11 @@ public class WeatherAppService : IWeatherService
                 SubscribedAt = DateTime.UtcNow
             });
             await _dbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("New alert subscription saved. Email: {Email}, Location: {Location}", email, location);
+        }
+        else
+        {
+            _logger.LogDebug("Duplicate subscription ignored. Email: {Email}, Location: {Location}", email, location);
         }
     }
 }
